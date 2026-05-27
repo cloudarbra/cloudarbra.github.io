@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Control de Inventario - Almacén Natural</title>
+    <!-- Tailwind CSS para diseño moderno y ultra-responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons para iconografía limpia y profesional -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Ocultar flechas de inputs numéricos en navegadores */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="h-full text-slate-800 flex flex-col antialiased">
+
+    <!-- BARRA DE NAVEGACIÓN SUPERIOR -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Logotipo e Identidad -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center text-brand-700 shadow-inner">
+                        <i data-lucide="leaf" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-slate-900 tracking-tight leading-none">Brotes Verdes</h1>
+                        <p class="text-xs text-slate-500 font-medium">Control de Inventario Natural</p>
+                    </div>
+                </div>
+                <!-- Indicador de Guardado Autómatico -->
+                <div class="flex items-center space-x-2 text-xs text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Local Storage Activo</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENEDOR PRINCIPAL -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        
+        <!-- SECCIÓN DE MÉTRICAS (KPIs) -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="stats-container">
+            <!-- Tarjeta 1: Variedad de Artículos -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4 transition hover:shadow-md">
+                <div class="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                    <i data-lucide="package" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Variedad de Productos</p>
+                    <p class="text-2xl font-bold text-slate-900" id="stat-total-types">0</p>
+                </div>
+            </div>
+
+            <!-- Tarjeta 2: Stock Físico Total -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4 transition hover:shadow-md">
+                <div class="p-3 bg-amber-50 text-amber-600 rounded-xl">
+                    <i data-lucide="boxes" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Stock Físico Total</p>
+                    <p class="text-2xl font-bold text-slate-900" id="stat-total-stock">0</p>
+                </div>
+            </div>
+
+            <!-- Tarjeta 3: Valoración Total -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4 transition hover:shadow-md">
+                <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+                    <i data-lucide="dollar-sign" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Valor de Inventario</p>
+                    <p class="text-2xl font-bold text-slate-900" id="stat-total-value">$0,00</p>
+                </div>
+            </div>
+
+            <!-- Tarjeta 4: Alertas Críticas (Menos de 5 unidades) -->
+            <div id="stat-card-alerts" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4 transition-all duration-300">
+                <div id="stat-alert-icon-box" class="p-3 bg-slate-100 text-slate-600 rounded-xl">
+                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Stock Crítico (&lt; 5)</p>
+                    <p class="text-2xl font-bold text-slate-900" id="stat-total-alerts">0</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN DE ACCIONES, BÚSQUEDA Y FILTROS -->
+        <section class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                
+                <!-- Búsqueda e Interfaz de Filtrado -->
+                <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Buscar -->
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="search" class="w-5 h-5"></i>
+                        </span>
+                        <input type="text" id="search-input" placeholder="Buscar por nombre de producto..." 
+                               class="block w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all">
+                    </div>
+                    <!-- Filtrar por Categoría -->
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="tag" class="w-5 h-5"></i>
+                        </span>
+                        <select id="filter-category" 
+                                class="block w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all appearance-none cursor-pointer">
+                            <option value="">Todas las categorías</option>
+                            <!-- Se inyectan dinámicamente -->
+                        </select>
+                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Botones de Acción -->
+                <div class="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+                    <!-- Botón Exportar Inventario -->
+                    <button onclick="exportToCSV()" class="w-full sm:w-auto flex items-center justify-center space-x-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold px-5 py-2.5 rounded-xl transition-all shadow-xs active:scale-98">
+                        <i data-lucide="download" class="w-5 h-5 text-slate-500"></i>
+                        <span>Exportar CSV</span>
+                    </button>
+                    <!-- Botón Agregar Producto -->
+                    <button onclick="openProductModal()" class="w-full sm:w-auto flex items-center justify-center space-x-2 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-medium px-5 py-2.5 rounded-xl transition-all shadow-sm active:scale-98">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                        <span>Agregar Producto</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN DE TABLA DE INVENTARIO -->
+        <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            <th class="py-4 px-6">Detalles de Producto</th>
+                            <th class="py-4 px-6">Categoría</th>
+                            <th class="py-4 px-6 text-right">Precio Unitario</th>
+                            <th class="py-4 px-6 text-center w-48">Stock Disponible</th>
+                            <th class="py-4 px-6 text-right">Valorizado</th>
+                            <th class="py-4 px-6 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-tbody" class="divide-y divide-slate-100">
+                        <!-- Se renderiza dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Estado Vacío (Empty State) -->
+            <div id="empty-state" class="hidden flex-col items-center justify-center p-12 text-center bg-white">
+                <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mb-4">
+                    <i data-lucide="package-search" class="w-10 h-10"></i>
+                </div>
+                <h3 class="text-base font-bold text-slate-900">No se encontraron productos</h3>
+                <p class="text-sm text-slate-500 mt-1 max-w-sm">Intentá modificando los filtros de búsqueda o agregá un nuevo producto para dar inicio al inventario.</p>
+                <button onclick="openProductModal()" class="mt-4 text-sm text-brand-600 hover:text-brand-700 font-semibold flex items-center space-x-1.5">
+                    <span>Crear primer artículo</span>
+                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-slate-400 text-xs font-medium">
+            &copy; 2026 Almacén de Productos Naturales. Diseñado con altos estándares de usabilidad comercial.
+        </div>
+    </footer>
+
+    <!-- MODAL PARA AGREGAR / EDITAR PRODUCTO -->
+    <div id="product-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-lg shadow-xl border border-slate-100 overflow-hidden transform scale-95 transition-transform duration-300" id="modal-content">
+            <!-- Cabecera del Modal -->
+            <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div class="flex items-center space-x-2">
+                    <span id="modal-icon" class="text-brand-600"><i data-lucide="plus-circle" class="w-5 h-5"></i></span>
+                    <h3 id="modal-title" class="text-base font-bold text-slate-900">Agregar Nuevo Producto</h3>
+                </div>
+                <button onclick="closeProductModal()" class="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Cuerpo del Formulario -->
+            <form id="product-form" onsubmit="saveProduct(event)" class="p-6 space-y-4">
+                <input type="hidden" id="product-id">
+
+                <!-- Nombre -->
+                <div>
+                    <label for="p-name" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nombre del Producto</label>
+                    <input type="text" id="p-name" required placeholder="Ej. Spirulina en Polvo Orgánica" 
+                           class="block w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all">
+                </div>
+
+                <!-- Categoría -->
+                <div>
+                    <label for="p-category" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Categoría</label>
+                    <div class="flex space-x-2">
+                        <select id="p-category" required 
+                                class="block w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all appearance-none bg-no-repeat bg-right bg-[length:20px_20px] bg-slate-50 cursor-pointer">
+                            <!-- Inyección dinámica -->
+                        </select>
+                        <button type="button" onclick="promptNewCategory()" title="Nueva Categoría" 
+                                class="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2.5 rounded-xl transition-colors flex items-center justify-center">
+                            <i data-lucide="plus" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Fila de Precio y Stock Inicial -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="p-price" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Precio ($)</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm font-semibold">$</span>
+                            <input type="number" id="p-price" min="0" step="0.01" required placeholder="0.00" 
+                                   class="block w-full pl-8 pr-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="p-stock" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Stock Inicial</label>
+                        <input type="number" id="p-stock" min="0" step="1" required placeholder="Cant. disponible" 
+                               class="block w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all">
+                    </div>
+                </div>
+
+                <!-- Sección de Imagen con Pestañas -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Imagen / Representación Visual</label>
+                    
+                    <!-- Pestañas (Tabs) de selección -->
+                    <div class="flex border-b border-slate-100 text-xs font-semibold text-slate-500 mb-3" id="image-tabs">
+                        <button type="button" onclick="switchImageTab('emoji')" id="tab-emoji" class="flex-1 pb-2 border-b-2 border-brand-600 text-brand-600 font-bold transition-all">Usar Emoji</button>
+                        <button type="button" onclick="switchImageTab('upload')" id="tab-upload" class="flex-1 pb-2 border-b-2 border-transparent hover:text-slate-800 transition-all">Subir Foto</button>
+                        <button type="button" onclick="switchImageTab('url')" id="tab-url" class="flex-1 pb-2 border-b-2 border-transparent hover:text-slate-800 transition-all">Pegar Enlace</button>
+                    </div>
+
+                    <!-- Contenido Pestaña 1: Selector de Emojis -->
+                    <div id="panel-emoji" class="space-y-2">
+                        <span class="text-xs text-slate-400 block mb-1">Elegí un ícono ilustrativo para tu producto natural:</span>
+                        <div class="grid grid-cols-6 sm:grid-cols-8 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200" id="emoji-grid">
+                            <!-- Botones de Emojis -->
+                        </div>
+                        <input type="hidden" id="p-emoji-value" value="🌿">
+                    </div>
+
+                    <!-- Contenido Pestaña 2: Subir Foto -->
+                    <div id="panel-upload" class="hidden space-y-2">
+                        <div class="border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:bg-slate-50 transition cursor-pointer relative" id="drop-zone">
+                            <input type="file" id="p-file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleFileSelect(event)">
+                            <div class="space-y-1" id="upload-prompt">
+                                <i data-lucide="upload-cloud" class="w-8 h-8 text-slate-400 mx-auto"></i>
+                                <p class="text-xs font-semibold text-slate-600">Presioná o arrastrá para subir</p>
+                                <p class="text-[10px] text-slate-400">PNG, JPG de tamaño moderado</p>
+                            </div>
+                            <div id="upload-preview" class="hidden flex items-center justify-center space-x-3">
+                                <img id="uploaded-img-preview" src="" class="w-12 h-12 rounded-xl object-cover border border-slate-100 shadow-sm">
+                                <div class="text-left">
+                                    <p class="text-xs font-semibold text-slate-700 truncate max-w-[200px]" id="uploaded-file-name"></p>
+                                    <button type="button" onclick="clearUploadedFile(event)" class="text-[10px] font-bold text-red-500 hover:underline">Eliminar imagen</button>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="p-upload-base64">
+                    </div>
+
+                    <!-- Contenido Pestaña 3: Pegar Enlace -->
+                    <div id="panel-url" class="hidden space-y-2">
+                        <input type="url" id="p-url" placeholder="https://ejemplo.com/imagen.jpg" 
+                               class="block w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all">
+                        <p class="text-[10px] text-slate-400">Pega la dirección URL de una imagen pública de internet.</p>
+                    </div>
+
+                    <!-- Campo interno que guarda el tipo activo de imagen -->
+                    <input type="hidden" id="p-image-type" value="emoji">
+                </div>
+
+                <!-- Botones del Formulario -->
+                <div class="flex items-center space-x-3 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closeProductModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-sm transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="flex-1 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors shadow-sm">
+                        Confirmar y Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATIONS (Alertas personalizadas en pantalla) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+    <!-- SCRIPT DE COMPORTAMIENTO (JavaScript Puro) -->
+    <script>
+        // --- CONSTANTES Y ESTADO DE LA APLICACIÓN ---
+        const DEFAULT_CATEGORIES = ["Hierbas y Té", "Suplementos", "Cosmética Natural", "Alimentos Orgánicos", "Aceites Esenciales"];
+        const DEFAULT_EMOJIS = ["🌿", "🌱", "🍵", "🍯", "🧴", "💊", "🍎", "🥜", "🥥", "🍄", "🍋", "🍪", "🧴", "🧼", "🌾", "🥑"];
+        
+        // Carga inicial de datos desde localStorage o uso de catálogo semilla de demostración
+        let products = JSON.parse(localStorage.getItem('natural_store_inventory')) || [
+            { id: "1", name: "Té Verde Matcha Puro (100g)", category: "Hierbas y Té", price: 4200.00, stock: 12, imageType: "emoji", image: "🍵" },
+            { id: "2", name: "Suplemento de Espirulina en Cápsulas", category: "Suplementos", price: 3800.00, stock: 3, imageType: "emoji", image: "💊" },
+            { id: "3", name: "Aceite de Almendras Puras (120ml)", category: "Cosmética Natural", price: 2900.00, stock: 7, imageType: "emoji", image: "🧴" },
+            { id: "4", name: "Miel Orgánica Multiflora de Pradera", category: "Alimentos Orgánicos", price: 3100.00, stock: 4, imageType: "emoji", image: "🍯" },
+            { id: "5", name: "Aceite Esencial de Lavanda (15ml)", category: "Aceites Esenciales", price: 1850.00, stock: 15, imageType: "emoji", image: "🌿" }
+        ];
+
+        let categories = JSON.parse(localStorage.getItem('natural_store_categories')) || DEFAULT_CATEGORIES;
+
+        // Filtros globales de la tabla
+        let searchTerm = "";
+        let selectedCategory = "";
+
+        // --- INICIALIZACIÓN ---
+        window.addEventListener('DOMContentLoaded', () => {
+            // Re-render inicial
+            saveToLocalStorage();
+            buildCategorySelects();
+            buildEmojiSelector();
+            renderDashboard();
+            renderTable();
+            lucide.createIcons();
+        });
+
+        // --- SISTEMA DE ALMACENAMIENTO ---
+        function saveToLocalStorage() {
+            localStorage.setItem('natural_store_inventory', JSON.stringify(products));
+            localStorage.setItem('natural_store_categories', JSON.stringify(categories));
+        }
+
+        // --- SISTEMA DE TOASTS (Alertas en pantalla sin usar 'alert()') ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `flex items-center space-x-2.5 p-4 rounded-xl shadow-lg border text-sm pointer-events-auto transition-all duration-300 transform translate-y-2 opacity-0`;
+            
+            if (type === 'success') {
+                toast.classList.add('bg-emerald-50', 'text-emerald-800', 'border-emerald-100');
+                toast.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5 text-emerald-500"></i> <span class="font-semibold">${message}</span>`;
+            } else if (type === 'error') {
+                toast.classList.add('bg-red-50', 'text-red-800', 'border-red-100');
+                toast.innerHTML = `<i data-lucide="alert-circle" class="w-5 h-5 text-red-500"></i> <span class="font-semibold">${message}</span>`;
+            } else if (type === 'warning') {
+                toast.classList.add('bg-amber-50', 'text-amber-800', 'border-amber-100');
+                toast.innerHTML = `<i data-lucide="alert-triangle" class="w-5 h-5 text-amber-500"></i> <span class="font-semibold">${message}</span>`;
+            }
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            // Animación Entrada
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            // Animación Salida y Eliminación
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3500);
+        }
+
+        // --- COMPONENTE DE SELECCIÓN DE CATEGORÍAS ---
+        function buildCategorySelects() {
+            const filterSelect = document.getElementById('filter-category');
+            const formSelect = document.getElementById('p-category');
+
+            // Guardar valor seleccionado para preservarlo si se reconstruye
+            const currentFilterVal = filterSelect.value;
+            const currentFormVal = formSelect.value;
+
+            // Reconstruir opciones
+            let filterHtml = '<option value="">Todas las categorías</option>';
+            let formHtml = '';
+
+            categories.forEach(cat => {
+                filterHtml += `<option value="${cat}">${cat}</option>`;
+                formHtml += `<option value="${cat}">${cat}</option>`;
+            });
+
+            filterSelect.innerHTML = filterHtml;
+            formSelect.innerHTML = formHtml;
+
+            // Restaurar valores seleccionados
+            filterSelect.value = currentFilterVal;
+            formSelect.value = currentFormVal;
+
+            // Escuchadores
+            filterSelect.onchange = (e) => {
+                selectedCategory = e.target.value;
+                renderTable();
+            };
+        }
+
+        // --- DIÁLOGO DE NUEVA CATEGORÍA ---
+        function promptNewCategory() {
+            // Creación de un modal prompt personalizado en reemplazo de prompt() tradicional
+            const customPromptContainer = document.createElement('div');
+            customPromptContainer.className = 'fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4';
+            customPromptContainer.innerHTML = `
+                <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl border border-slate-100 space-y-4">
+                    <div>
+                        <h4 class="font-bold text-slate-900 text-base">Nueva Categoría</h4>
+                        <p class="text-xs text-slate-500 mt-1">Ingresá el nombre de la nueva familia de productos.</p>
+                    </div>
+                    <input type="text" id="custom-prompt-input" placeholder="Ej. Semillas y Granos" 
+                           class="block w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all">
+                    <div class="flex items-center space-x-2">
+                        <button id="btn-cancel-prompt" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-lg text-xs transition-colors">Cancelar</button>
+                        <button id="btn-confirm-prompt" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2 rounded-lg text-xs transition-colors">Agregar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(customPromptContainer);
+            
+            const inputField = document.getElementById('custom-prompt-input');
+            inputField.focus();
+
+            const closePrompt = () => { customPromptContainer.remove(); };
+
+            document.getElementById('btn-cancel-prompt').onclick = closePrompt;
+            document.getElementById('btn-confirm-prompt').onclick = () => {
+                const newCat = inputField.value.trim();
+                if (newCat) {
+                    if (categories.some(c => c.toLowerCase() === newCat.toLowerCase())) {
+                        showToast("Esta categoría ya existe.", "error");
+                    } else {
+                        categories.push(newCat);
+                        saveToLocalStorage();
+                        buildCategorySelects();
+                        document.getElementById('p-category').value = newCat; // Autoseleccionar la nueva categoría
+                        showToast(`Categoría "${newCat}" agregada con éxito.`);
+                        closePrompt();
+                    }
+                } else {
+                    showToast("El nombre de la categoría no puede estar vacío.", "warning");
+                }
+            };
+        }
+
+        // --- SELECTOR DE EMOJIS ---
+        function buildEmojiSelector() {
+            const grid = document.getElementById('emoji-grid');
+            grid.innerHTML = '';
+            DEFAULT_EMOJIS.forEach(emoji => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `w-10 h-10 rounded-xl text-lg flex items-center justify-center hover:bg-brand-100 transition border border-transparent select-none`;
+                btn.textContent = emoji;
+                btn.onclick = (e) => selectEmoji(emoji, e.currentTarget);
+                grid.appendChild(btn);
+            });
+            // Seleccionar el primero por defecto
+            const firstBtn = grid.firstElementChild;
+            if (firstBtn) selectEmoji(DEFAULT_EMOJIS[0], firstBtn);
+        }
+
+        function selectEmoji(emoji, buttonElement) {
+            document.getElementById('p-emoji-value').value = emoji;
+            // Remover bordes de todos los botones en el contenedor
+            const siblingButtons = buttonElement.parentNode.querySelectorAll('button');
+            siblingButtons.forEach(btn => btn.classList.remove('bg-brand-200', 'border-brand-500', 'scale-105'));
+            // Resaltar el botón activo
+            buttonElement.classList.add('bg-brand-200', 'border-brand-500', 'scale-105');
+        }
+
+        // --- SISTEMA DE IMAGENES: GESTIÓN DE PESTAÑAS (TABS) ---
+        function switchImageTab(tabType) {
+            document.getElementById('p-image-type').value = tabType;
+            
+            // Paneles
+            document.getElementById('panel-emoji').classList.toggle('hidden', tabType !== 'emoji');
+            document.getElementById('panel-upload').classList.toggle('hidden', tabType !== 'upload');
+            document.getElementById('panel-url').classList.toggle('hidden', tabType !== 'url');
+
+            // Ajuste visual de los botones de Pestaña
+            const tabs = ['emoji', 'upload', 'url'];
+            tabs.forEach(t => {
+                const tabEl = document.getElementById(`tab-${t}`);
+                if (t === tabType) {
+                    tabEl.classList.remove('border-transparent', 'text-slate-500');
+                    tabEl.classList.add('border-brand-600', 'text-brand-600', 'font-bold');
+                } else {
+                    tabEl.classList.remove('border-brand-600', 'text-brand-600', 'font-bold');
+                    tabEl.classList.add('border-transparent', 'text-slate-500');
+                }
+            });
+        }
+
+        // Procesa la subida de un archivo físico a Base64
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 2 * 1024 * 1024) { // Límite de 2MB para localStorage
+                showToast("La imagen supera los 2MB de capacidad recomendada.", "error");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('p-upload-base64').value = e.target.result;
+                
+                // Mostrar vista previa
+                document.getElementById('upload-prompt').classList.add('hidden');
+                document.getElementById('upload-preview').classList.remove('hidden');
+                document.getElementById('uploaded-img-preview').src = e.target.result;
+                document.getElementById('uploaded-file-name').textContent = file.name;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearUploadedFile(event) {
+            if (event) event.stopPropagation();
+            document.getElementById('p-file').value = '';
+            document.getElementById('p-upload-base64').value = '';
+            document.getElementById('upload-prompt').classList.remove('hidden');
+            document.getElementById('upload-preview').classList.add('hidden');
+        }
+
+        // --- SISTEMA DE MODALES ---
+        function openProductModal(prodId = null) {
+            const modal = document.getElementById('product-modal');
+            const form = document.getElementById('product-form');
+            form.reset();
+            clearUploadedFile();
+            
+            if (prodId) {
+                // Modo Edición
+                const prod = products.find(p => p.id === prodId.toString());
+                if (!prod) return;
+
+                document.getElementById('product-id').value = prod.id;
+                document.getElementById('modal-title').textContent = "Editar Producto";
+                document.getElementById('modal-icon').innerHTML = '<i data-lucide="edit-3" class="w-5 h-5"></i>';
+                
+                document.getElementById('p-name').value = prod.name;
+                document.getElementById('p-category').value = prod.category;
+                document.getElementById('p-price').value = prod.price;
+                document.getElementById('p-stock').value = prod.stock;
+
+                // Cargar imagen respectiva
+                switchImageTab(prod.imageType);
+                if (prod.imageType === 'emoji') {
+                    // Buscar botón de emoji correspondiente en la grilla y seleccionarlo
+                    const emojiButtons = document.getElementById('emoji-grid').querySelectorAll('button');
+                    let found = false;
+                    emojiButtons.forEach(btn => {
+                        if (btn.textContent === prod.image) {
+                            selectEmoji(prod.image, btn);
+                            found = true;
+                        }
+                    });
+                    if (!found) {
+                        // En caso de que no esté en la grilla predeterminada
+                        document.getElementById('p-emoji-value').value = prod.image;
+                    }
+                } else if (prod.imageType === 'upload') {
+                    document.getElementById('p-upload-base64').value = prod.image;
+                    document.getElementById('upload-prompt').classList.add('hidden');
+                    document.getElementById('upload-preview').classList.remove('hidden');
+                    document.getElementById('uploaded-img-preview').src = prod.image;
+                    document.getElementById('uploaded-file-name').textContent = "Imagen cargada previamente";
+                } else if (prod.imageType === 'url') {
+                    document.getElementById('p-url').value = prod.image;
+                }
+            } else {
+                // Modo Creación
+                document.getElementById('product-id').value = "";
+                document.getElementById('modal-title').textContent = "Agregar Nuevo Producto";
+                document.getElementById('modal-icon').innerHTML = '<i data-lucide="plus-circle" class="w-5 h-5"></i>';
+                switchImageTab('emoji');
+                
+                // Forzar el primer emoji como seleccionado por defecto
+                const firstBtn = document.getElementById('emoji-grid').firstElementChild;
+                if (firstBtn) selectEmoji(DEFAULT_EMOJIS[0], firstBtn);
+            }
+
+            modal.classList.remove('hidden');
+            // Animación suave de apertura
+            setTimeout(() => {
+                document.getElementById('modal-content').classList.remove('scale-95');
+                document.getElementById('modal-content').classList.add('scale-100');
+            }, 10);
+            lucide.createIcons();
+        }
+
+        function closeProductModal() {
+            const modal = document.getElementById('product-modal');
+            document.getElementById('modal-content').classList.remove('scale-100');
+            document.getElementById('modal-content').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 150);
+        }
+
+        // --- SISTEMA DE PERSISTENCIA Y PERSPECTIVA DE NEGOCIO (GUARDADO) ---
+        function saveProduct(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('product-id').value;
+            const name = document.getElementById('p-name').value.trim();
+            const category = document.getElementById('p-category').value;
+            const price = parseFloat(document.getElementById('p-price').value);
+            const stock = parseInt(document.getElementById('p-stock').value, 10);
+            const imageType = document.getElementById('p-image-type').value;
+
+            // Selección de recurso de imagen
+            let image = "🌿";
+            if (imageType === 'emoji') {
+                image = document.getElementById('p-emoji-value').value;
+            } else if (imageType === 'upload') {
+                image = document.getElementById('p-upload-base64').value;
+                if (!image) {
+                    showToast("Por favor subí una foto o seleccioná otro método.", "warning");
+                    return;
+                }
+            } else if (imageType === 'url') {
+                image = document.getElementById('p-url').value.trim();
+                if (!image) {
+                    showToast("Por favor colocá un enlace URL válido.", "warning");
+                    return;
+                }
+            }
+
+            if (!name || isNaN(price) || isNaN(stock)) {
+                showToast("Por favor, completá los campos con valores correctos.", "error");
+                return;
+            }
+
+            if (id) {
+                // Editar existente
+                const index = products.findIndex(p => p.id === id);
+                if (index !== -1) {
+                    products[index] = { id, name, category, price, stock, imageType, image };
+                    showToast(`Se actualizó "${name}" con éxito.`);
+                }
+            } else {
+                // Crear nuevo
+                const newId = Date.now().toString();
+                products.push({ id: newId, name, category, price, stock, imageType, image });
+                showToast(`Se ha creado "${name}" en el catálogo.`);
+            }
+
+            saveToLocalStorage();
+            closeProductModal();
+            renderDashboard();
+            renderTable();
+        }
+
+        // --- ELIMINAR ARTÍCULO ---
+        function deleteProduct(prodId, name) {
+            const customConfirmContainer = document.createElement('div');
+            customConfirmContainer.className = 'fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4';
+            customConfirmContainer.innerHTML = `
+                <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl border border-slate-100 space-y-4">
+                    <div class="flex items-center space-x-3 text-red-600">
+                        <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-900 text-base">¿Eliminar Producto?</h4>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">¿Estás seguro de que deseás eliminar permanentemente <strong>"${name}"</strong> del catálogo? Esta acción no se puede deshacer.</p>
+                    <div class="flex items-center space-x-2">
+                        <button id="btn-cancel-delete" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-lg text-xs transition-colors">Conservar</button>
+                        <button id="btn-confirm-delete" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-lg text-xs transition-colors">Eliminar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(customConfirmContainer);
+            lucide.createIcons();
+
+            const closeConfirm = () => { customConfirmContainer.remove(); };
+
+            document.getElementById('btn-cancel-delete').onclick = closeConfirm;
+            document.getElementById('btn-confirm-delete').onclick = () => {
+                products = products.filter(p => p.id !== prodId.toString());
+                saveToLocalStorage();
+                renderDashboard();
+                renderTable();
+                showToast(`Producto "${name}" eliminado.`);
+                closeConfirm();
+            };
+        }
+
+        // --- SISTEMA DE CONTROL DE STOCK RÁPIDO (Incremento/Decremento) ---
+        function updateStockQty(prodId, delta) {
+            const prod = products.find(p => p.id === prodId.toString());
+            if (!prod) return;
+
+            const newStock = prod.stock + delta;
+            if (newStock < 0) {
+                showToast("El stock no puede descender de 0.", "warning");
+                return;
+            }
+
+            // Alerta si cruzamos el límite crítico de forma decreciente
+            if (newStock < 5 && prod.stock >= 5) {
+                showToast(`"${prod.name}" bajó de las 5 unidades críticas.`, "warning");
+            }
+
+            prod.stock = newStock;
+            saveToLocalStorage();
+            renderDashboard();
+            renderTable();
+        }
+
+        // --- MANIPULACIÓN MANUAL DE STOCK ---
+        function setManualStock(prodId, element) {
+            const value = parseInt(element.value, 10);
+            const prod = products.find(p => p.id === prodId.toString());
+            if (!prod) return;
+
+            if (isNaN(value) || value < 0) {
+                showToast("Por favor, ingresá una cantidad de stock válida.", "error");
+                element.value = prod.stock; // Restaurar anterior
+                return;
+            }
+
+            if (value < 5 && prod.stock >= 5) {
+                showToast(`"${prod.name}" cuenta con stock crítico.`, "warning");
+            }
+
+            prod.stock = value;
+            saveToLocalStorage();
+            renderDashboard();
+            renderTable();
+        }
+
+        // --- EXPORTAR A CSV (Compatible con Excel en Español) ---
+        function exportToCSV() {
+            if (products.length === 0) {
+                showToast("No hay productos en el inventario para exportar.", "warning");
+                return;
+            }
+
+            // Encabezados con delimitador de punto y coma (Estándar de listas en configuraciones regionales en español)
+            const headers = ["ID", "Nombre de Producto", "Categoría", "Precio Unitario ($)", "Stock Disponible", "Total Valorizado ($)"];
+            
+            // Mapeo estructurado para evitar rupturas de sintaxis con las comas y comillas de los nombres
+            const rows = products.map(p => [
+                p.id,
+                `"${p.name.replace(/"/g, '""')}"`, // Escapar comillas internas si existiesen
+                `"${p.category.replace(/"/g, '""')}"`,
+                p.price.toFixed(2),
+                p.stock,
+                (p.price * p.stock).toFixed(2)
+            ]);
+
+            // Unir líneas con saltos de línea estándar
+            const csvContent = [
+                headers.join(";"),
+                ...rows.map(row => row.join(";"))
+            ].join("\n");
+
+            // Incorporación de UTF-8 BOM (\uFEFF) para forzar a Excel a decodificar correctamente acentos, eñes y emojis
+            const BOM = "\uFEFF";
+            const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+            
+            // Creación y ejecución de la descarga en segundo plano
+            const tempLink = document.createElement("a");
+            if (tempLink.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                const fecha = new Date().toISOString().slice(0, 10);
+                tempLink.setAttribute("href", url);
+                tempLink.setAttribute("download", `inventario_tienda_${fecha}.csv`);
+                tempLink.style.visibility = 'hidden';
+                document.body.appendChild(tempLink);
+                tempLink.click();
+                document.body.removeChild(tempLink);
+                
+                showToast("Archivo CSV exportado correctamente.");
+            } else {
+                showToast("Tu navegador no soporta descargas directas en segundo plano.", "error");
+            }
+        }
+
+        // --- RENDERING: PANEL DE MÉTRICAS (DASHBOARD) ---
+        function renderDashboard() {
+            const totalTypes = products.length;
+            const totalStock = products.reduce((acc, p) => acc + p.stock, 0);
+            const totalValue = products.reduce((acc, p) => acc + (p.stock * p.price), 0);
+            const totalAlerts = products.filter(p => p.stock < 5).length;
+
+            // Formateadores localizados de moneda
+            const currencyFormatter = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
+
+            document.getElementById('stat-total-types').textContent = totalTypes;
+            document.getElementById('stat-total-stock').textContent = totalStock;
+            document.getElementById('stat-total-value').textContent = currencyFormatter.format(totalValue);
+            document.getElementById('stat-total-alerts').textContent = totalAlerts;
+
+            // Cambiar aspecto estético de tarjeta de alertas críticas en caso de riesgo
+            const alertCard = document.getElementById('stat-card-alerts');
+            const alertIconBox = document.getElementById('stat-alert-icon-box');
+
+            if (totalAlerts > 0) {
+                alertCard.className = "bg-red-50 p-5 rounded-2xl border-2 border-red-300 shadow-sm flex items-center space-x-4 transition-all duration-300 transform scale-102";
+                alertIconBox.className = "p-3 bg-red-500 text-white rounded-xl shadow-sm";
+            } else {
+                alertCard.className = "bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4 transition-all duration-300";
+                alertIconBox.className = "p-3 bg-slate-100 text-slate-600 rounded-xl";
+            }
+        }
+
+        // --- RENDERING: TABLA DE PRODUCTOS ---
+        function renderTable() {
+            const tbody = document.getElementById('inventory-tbody');
+            const emptyState = document.getElementById('empty-state');
+            
+            // Filtrar productos
+            const filteredProducts = products.filter(p => {
+                const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesCategory = selectedCategory === "" || p.category === selectedCategory;
+                return matchesSearch && matchesCategory;
+            });
+
+            if (filteredProducts.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            let rowsHtml = '';
+            const currencyFormatter = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
+
+            filteredProducts.forEach(p => {
+                const isCritical = p.stock < 5;
+                const rowClass = isCritical ? 'bg-red-50/50 hover:bg-red-50 transition-colors' : 'hover:bg-slate-50 transition-colors';
+                
+                // Gestión de la representación de imagen
+                let imageElement = '';
+                if (p.imageType === 'emoji') {
+                    imageElement = `<span class="text-2xl select-none">${p.image}</span>`;
+                } else if (p.imageType === 'upload' || p.imageType === 'url') {
+                    // Fallback nativo usando onerror
+                    imageElement = `<img src="${p.image}" onerror="this.onerror=null; this.outerHTML='<span class=\'text-2xl\'>🌿</span>';" class="w-10 h-10 rounded-xl object-cover border border-slate-200 shadow-xs">`;
+                }
+
+                // Indicador de estado de stock en texto
+                const statusBadge = isCritical 
+                    ? `<span class="inline-flex items-center space-x-1 text-[10px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full mt-1"><i data-lucide="alert-circle" class="w-3 h-3"></i> <span>Reabastecer</span></span>`
+                    : `<span class="inline-flex items-center space-x-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full mt-1"><span>Saludable</span></span>`;
+
+                rowsHtml += `
+                    <tr class="${rowClass}">
+                        <!-- Detalles de Producto -->
+                        <td class="py-4 px-6">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center border border-slate-200/60 overflow-hidden flex-shrink-0">
+                                    ${imageElement}
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-900 text-sm leading-snug">${p.name}</h4>
+                                    ${statusBadge}
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <!-- Categoría -->
+                        <td class="py-4 px-6 text-sm text-slate-600 font-medium">${p.category}</td>
+                        
+                        <!-- Precio Unitario -->
+                        <td class="py-4 px-6 text-sm text-slate-900 font-semibold text-right">${currencyFormatter.format(p.price)}</td>
+                        
+                        <!-- Stock Disponible -->
+                        <td class="py-4 px-6 text-center">
+                            <div class="flex items-center justify-center space-x-1">
+                                <!-- Botón de resta -->
+                                <button onclick="updateStockQty('${p.id}', -1)" title="Restar 1"
+                                        class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 flex items-center justify-center transition shadow-xs active:scale-95">
+                                    <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+                                </button>
+                                
+                                <!-- Editor numérico manual -->
+                                <input type="number" value="${p.stock}" onchange="setManualStock('${p.id}', this)"
+                                       class="w-14 text-center text-sm font-bold bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white focus:rounded-lg py-1 transition-all ${isCritical ? 'text-red-700 font-black' : 'text-slate-800'}">
+                                
+                                <!-- Botón de suma -->
+                                <button onclick="updateStockQty('${p.id}', 1)" title="Sumar 1"
+                                        class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 flex items-center justify-center transition shadow-xs active:scale-95">
+                                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                        </td>
+                        
+                        <!-- Valorizado -->
+                        <td class="py-4 px-6 text-sm text-slate-900 font-bold text-right">${currencyFormatter.format(p.price * p.stock)}</td>
+                        
+                        <!-- Acciones -->
+                        <td class="py-4 px-6 text-center">
+                            <div class="flex items-center justify-center space-x-2">
+                                <button onclick="openProductModal('${p.id}')" title="Editar Producto"
+                                        class="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
+                                    <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deleteProduct('${p.id}', '${p.name}')" title="Eliminar Producto"
+                                        class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = rowsHtml;
+            lucide.createIcons();
+        }
+
+        // --- FILTRADO DE BÚSQUEDA ---
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            searchTerm = e.target.value;
+            renderTable();
+        });
+    </script>
+</body>
+</html>
